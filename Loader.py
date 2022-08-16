@@ -99,7 +99,7 @@ def mal_subflow(num_pkts, pkt_size, kbit_rand):
 num_mal = np.ceil(X_clean.shape[0] / 5).astype(int) # 20% of clean subflows
 
 # Adjust num_pkts and/or pkt_size to affect data rate
-num_pkts = 500 # Uses 5 second duration for calculation
+num_pkts = 50 # Uses 5 second duration for calculation
 pkt_size = 500 # Nominal range: 40 - 1389 bytes
 
 # Generate subflows with varying data rates 
@@ -164,70 +164,52 @@ print(" f1-score:  ", f1_score(error_df_test['True_class'], pred_y))
 
 # In[5]:
 # Print Commands
-'''
-# BASE ENCODER WEIGHTS
-
-print('===Encoder weights===')
-print("Hidden layer")
-print(np.round(np.transpose(autoencoder.layers[0].get_weights()[0]), 3), end="\n\n")
-print("Latent layer")
-print(np.round(np.transpose(autoencoder.layers[1].get_weights()[0]), 3), end="\n\n")
-
-# BASE DECODER WEIGHTS
-
-print('===Decoder weights===')
-print("Hidden layer 2")
-print(np.round(autoencoder.layers[2].get_weights()[0], 3), end="\n\n")
-print("Output layer")
-print(np.round(autoencoder.layers[3].get_weights()[0], 3), end="\n\n")
-
-# DENSE TRANSPOSED DECODER WEIGHTS
-
-print('===Decoder weights===')
-print("Hidden layer 2")
-print(np.round(autoencoder.layers[2].get_weights()[1], 3).T, end="\n\n")
-print("Output layer")
-print(np.round(autoencoder.layers[3].get_weights()[1], 3).T, end="\n\n")
-
-# BASE ENCODER WEIGHTS NORM
-print('Encoder weights norm')
-w_encoder = np.round(autoencoder.layers[0].get_weights()[0], 2).T  # W in Figure 3.
-print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
-w_encoder = np.round(autoencoder.layers[1].get_weights()[0], 2).T  # W in Figure 3.
-print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
-
-# BASE DECODER WEIGHTS NORM
-print('Decoder weights norm')
-w_decoder = np.round(autoencoder.layers[2].get_weights()[0], 2)  
-print(np.round(np.sum(w_decoder ** 2, axis = 1),3), end="\n\n")
-w_decoder = np.round(autoencoder.layers[3].get_weights()[0], 2) 
-print(np.round(np.sum(w_decoder ** 2, axis = 1),3), end="\n\n")
-
-# DENSE TRANSPOSED DECODER WEIGHTS NORM
-print('Decoder weights norm')
-w_decoder = np.round(autoencoder.layers[2].get_weights()[1], 2).T  # W' in Figure 3.
-print(np.round(np.sum(w_decoder ** 2, axis = 1),3), end="\n\n")
-w_decoder = np.round(autoencoder.layers[3].get_weights()[1], 2).T  # W' in Figure 3.
-print(np.round(np.sum(w_decoder ** 2, axis = 1),3), end="\n\n")
-
-# BASE ENCODER DOT PRODUCT (ORTHOGONALITY)
-print('Encoder weights dot products')
-w_encoder = autoencoder.layers[0].get_weights()[0]
-print(np.round(np.dot(w_encoder, w_encoder.T), 2), end="\n\n")
-w_encoder = autoencoder.layers[1].get_weights()[0]
-print(np.round(np.dot(w_encoder.T, w_encoder), 2), end="\n\n")
-
-# BASE DECODER DOT PRODUCT (ORTHOGONALITY)
-print('Decoder weights dot product')
-w_decoder = autoencoder.layers[2].get_weights()[0]
-print(np.round(np.dot(w_decoder.T, w_decoder), 2), end="\n\n")
-w_decoder = autoencoder.layers[3].get_weights()[0]
-print(np.round(np.dot(w_decoder.T, w_decoder), 2), end="\n\n")
-
-# DENSE TRANSPOSED DECODER DOT PRODUCT (ORTHOGONALITY)
-print('Decoder weights dot product')
-w_decoder = autoencoder.layers[2].get_weights()[1]
-print(np.round(np.dot(w_decoder.T, w_decoder), 2), end="\n\n")
-w_decoder = autoencoder.layers[3].get_weights()[1]
-print(np.round(np.dot(w_decoder.T, w_decoder), 2), end="\n\n")
-'''
+def ae_stats(properties):
+    weight_index = 0
+    # Test if decoder is transposed or normal
+    decoder_test = len(autoencoder.layers[2].get_weights()[0])
+    if decoder_test == 10:
+        weight_index = 1
+    # Decoder weights
+    hdec_weights = autoencoder.layers[2].get_weights()[weight_index]
+    odec_weights = autoencoder.layers[3].get_weights()[weight_index]
+    # For dense transposed layers
+    if weight_index == 1: 
+        hdec_weights = hdec_weights.T 
+        odec_weights = odec_weights.T
+    if 'weights' in properties:
+        print('===Encoder weights===')
+        print("Hidden layer")
+        print(np.round(np.transpose(autoencoder.layers[0].get_weights()[0]), 3), end="\n\n")
+        print("Latent layer")
+        print(np.round(np.transpose(autoencoder.layers[1].get_weights()[0]), 3), end="\n\n")
+        print('===Decoder weights===')
+        print("Hidden layer 2")
+        print(np.round(hdec_weights, 3), end="\n\n")
+        print("Output layer")
+        print(np.round(odec_weights, 3), end="\n\n")
+    if 'norm' in properties:
+        print('Encoder weights norm')
+        w_encoder = np.round(autoencoder.layers[0].get_weights()[0], 2).T  # W in Figure 3.
+        print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
+        w_encoder = np.round(autoencoder.layers[1].get_weights()[0], 2).T  # W in Figure 3.
+        print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
+        print('Decoder weights norm')
+        w_decoder = np.round(hdec_weights, 2)  
+        print(np.round(np.sum(w_decoder ** 2, axis = 1),3), end="\n\n")
+        w_decoder = np.round(odec_weights, 2) 
+        print(np.round(np.sum(w_decoder ** 2, axis = 1),3), end="\n\n")
+    if 'ortho' in properties:
+        print('Encoder weights dot products')
+        w_encoder = autoencoder.layers[0].get_weights()[0]
+        print(np.round(np.dot(w_encoder, w_encoder.T), 2), end="\n\n")
+        w_encoder = autoencoder.layers[1].get_weights()[0]
+        print(np.round(np.dot(w_encoder.T, w_encoder), 2), end="\n\n")
+        print('Decoder weights dot product')
+        w_decoder = autoencoder.layers[2].get_weights()[weight_index]
+        print(np.round(np.dot(w_decoder.T, w_decoder), 2), end="\n\n")
+        w_decoder = autoencoder.layers[3].get_weights()[weight_index]
+        print(np.round(np.dot(w_decoder.T, w_decoder), 2), end="\n\n")
+# ['weights', 'norm', 'ortho']
+properties = ['weights', 'norm', 'ortho']
+ae_stats(properties)

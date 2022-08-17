@@ -63,10 +63,10 @@ print("number of packets removed:", (len(clean_mae_loss) - len(final_list)))
 print("number of packets before removal:", len(clean_mae_loss))
 
 # In[3]:
-def generate_mal_subflows(num_mal, num_pkts, pkt_size, kbit_rand):
+def generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient):
     mal_subflows = []
     for i in range(num_mal):
-        mal_subflows.append(mal_subflow(num_pkts, pkt_size, kbit_rand))
+        mal_subflows.append(mal_subflow(pkts_sec, pkt_size, gradient))
     mal_subflows = pd.DataFrame(mal_subflows)
     X_clean['Anomaly'] = 0
     mal_subflows.columns = X_clean.columns
@@ -74,13 +74,13 @@ def generate_mal_subflows(num_mal, num_pkts, pkt_size, kbit_rand):
     data = [X_clean, mal_subflows]
     return pd.concat(data).sample(frac=1)
 
-def mal_subflow(num_pkts, pkt_size, kbit_rand):
+def mal_subflow(pkts_sec, pkt_size, gradient):
     mal_features = []
     dur = 5
-    pkts_sec = num_pkts/dur
+    num_pkts = pkts_sec * dur
     mal_features.append(pkts_sec)
     # Simple ICMP flood with same size packets (bytes)
-    if kbit_rand:
+    if gradient:
         pkt_size = np.random.randint(40, pkt_size)
     total_size = pkt_size * num_pkts
     total_size /= 1e3 # KB
@@ -95,19 +95,16 @@ def mal_subflow(num_pkts, pkt_size, kbit_rand):
     mal_features.append(1) # Mark as anomaly
     return pd.Series(mal_features)
 
+# Anomalous Flow Generation
+pkt_size = 250 # Nominal range: 40 - 1389 bytes (65,535 bytes max in IPv4)
+pkts_sec = 12 # Highest in nominal data: 14
+# Generate each flow using different packet size (between 40 and pkt_size)
+# Note: Packet sizes are equal in each subflow, not randomized
+gradient = True 
 # Number of malicious subflows to generate
 num_mal = np.ceil(X_clean.shape[0] / 5).astype(int) # 20% of clean subflows
 
-# Adjust num_pkts and/or pkt_size to affect data rate
-num_pkts = 50 # Uses 5 second duration for calculation
-pkt_size = 500 # Nominal range: 40 - 1389 bytes
-
-# Generate subflows with varying data rates 
-# Each flood uses a different pkt_size (between 40 and pkt_size)
-# Note: Packet sizes are not randomized inside the subflows, they are fixed
-kbit_rand = True
-
-dirty_subflows = generate_mal_subflows(num_mal, num_pkts, pkt_size, kbit_rand)
+dirty_subflows = generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient)
 X = dirty_subflows[features]
 y = dirty_subflows[target]
 

@@ -28,41 +28,8 @@ clean_indices = y[y['Anomaly'] == 0].index
 X_clean = X.loc[clean_indices]
 
 # In[2]:
-# Load best model and find threshold
 
-model_name = "autoencoder_model_1.tf"
-
-# MODELS 1-4
-autoencoder = load_model(model_name)
-
-# MODELS 5-8
-#autoencoder = load_model(model_name, custom_objects={"opt":Lookahead(Adam())})
-
-# MODELS 9-12
-#autoencoder = load_model(model_name, custom_objects={"act1": LeakyReLU(), "act2": LeakyReLU()})
-
-# MODELS 13-16
-#autoencoder = load_model(model_name, custom_objects={"act1": LeakyReLU(), "act2": LeakyReLU(), "opt":Lookahead(Adam())})
-
-X_pred_clean = autoencoder.predict(X_clean)
-clean_mae_loss = np.mean(np.abs(X_pred_clean - X_clean), axis=1)
-threshold = np.max(clean_mae_loss)
-print("Reconstuction error threshold: ", threshold)
-
-# Calculate threshold by accounting for standard deviation
-mean = np.mean(clean_mae_loss, axis=0)
-sd = np.std(clean_mae_loss, axis=0)
-num_sd = 3
-
-# '2*sd' = ~97.5%, '1.76 = ~96%', '1.64 = ~95%'
-final_list = [x for x in clean_mae_loss if (x > mean - num_sd * sd)] 
-final_list = [x for x in final_list if (x < mean + num_sd * sd)]
-sd_threshold = np.max(final_list)
-print("max value after removing 3*std:", sd_threshold)
-print("number of packets removed:", (len(clean_mae_loss) - len(final_list)))
-print("number of packets before removal:", len(clean_mae_loss))
-
-# In[3]:
+# Anomaly generator
 def generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient):
     mal_subflows = []
     for i in range(num_mal):
@@ -81,7 +48,7 @@ def mal_subflow(pkts_sec, pkt_size, gradient):
     mal_features.append(pkts_sec)
     # Simple ICMP flood with same size packets (bytes)
     if gradient:
-        pkt_size = np.random.randint(40, pkt_size)
+        pkt_size = np.random.randint(64, pkt_size)
     total_size = pkt_size * num_pkts
     total_size /= 1e3 # KB
     bits_sec = (total_size * 8)/dur
@@ -96,19 +63,55 @@ def mal_subflow(pkts_sec, pkt_size, gradient):
     return pd.Series(mal_features)
 
 # Anomalous Flow Generation
-pkt_size = 250 # Nominal range: 40 - 1389 bytes (65,535 bytes max in IPv4)
-pkts_sec = 12 # Highest in nominal data: 14
-# Generate each flow using different packet size (between 40 and pkt_size)
+pkt_size = 500 # Nominal range: 40 - 1389 bytes (65,535 bytes max in IPv4)
+pkts_sec = 20 # Highest in nominal data: 14
+# Generate each flow using different packet size (between 64 and pkt_size)
 # Note: Packet sizes are equal in each subflow, not randomized
-gradient = True 
+gradient = True
 # Number of malicious subflows to generate
 num_mal = np.ceil(X_clean.shape[0] / 5).astype(int) # 20% of clean subflows
 
 dirty_subflows = generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient)
+
 X = dirty_subflows[features]
 y = dirty_subflows[target]
 
-# In[4]:
+
+# In[3]:
+
+# Load best model and find threshold
+
+model_name = "autoencoder_model_1.tf"
+
+# MODELS 1-4
+autoencoder = load_model(model_name)
+
+# MODELS 5-8
+#autoencoder = load_model(model_name, custom_objects={"opt":Lookahead(Adam())})
+
+# MODELS 9-12
+#autoencoder = load_model(model_name, custom_objects={"act1": LeakyReLU(), "act2": LeakyReLU()})
+
+# MODELS 13-16
+#autoencoder = load_model(model_name, custom_objects={"act1": LeakyReLU(), "act2": LeakyReLU(), "opt":Lookahead(Adam())})
+
+X_pred_clean = autoencoder.predict(X_clean[features])
+clean_mae_loss = np.mean(np.abs(X_pred_clean - X_clean[features]), axis=1)
+threshold = np.max(clean_mae_loss)
+print("Reconstuction error threshold: ", threshold)
+
+# Calculate threshold by accounting for standard deviation
+mean = np.mean(clean_mae_loss, axis=0)
+sd = np.std(clean_mae_loss, axis=0)
+num_sd = 3
+
+# '2*sd' = ~97.5%, '1.76 = ~96%', '1.64 = ~95%'
+final_list = [x for x in clean_mae_loss if (x > mean - num_sd * sd)] 
+final_list = [x for x in final_list if (x < mean + num_sd * sd)]
+sd_threshold = np.max(final_list)
+print("max value after removing 3*std:", sd_threshold)
+print("number of packets removed:", (len(clean_mae_loss) - len(final_list)))
+print("number of packets before removal:", len(clean_mae_loss))
 
 # Graph depicts threshold line and location of normal and malicious data
 X_pred = autoencoder.predict(X) 
@@ -135,7 +138,6 @@ plt.ylabel("Reconstruction error")
 plt.xlabel("Data point index")
 plt.show()
 
-# In[4]:
 #Confusion Matrix heat map
 
 pred_y = [1 if e > sd_threshold else 0 for e in error_df_test['Reconstruction_error'].values]
@@ -159,7 +161,7 @@ print(" recall:    ", recall_score(error_df_test['True_class'], pred_y))
 print(" precision: ", precision_score(error_df_test['True_class'], pred_y))
 print(" f1-score:  ", f1_score(error_df_test['True_class'], pred_y))
 
-# In[5]:
+# In[4]:
 # Print Commands
 def ae_stats(properties):
     weight_index = 0

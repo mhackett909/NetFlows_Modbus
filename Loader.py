@@ -189,9 +189,9 @@ def ae_stats(properties):
         print(np.round(odec_weights, 3), end="\n\n")
     if 'norm' in properties:
         print('Encoder weights norm')
-        w_encoder = np.round(autoencoder.layers[0].get_weights()[0], 2).T  # W in Figure 3.
+        w_encoder = np.round(autoencoder.layers[0].get_weights()[0], 2).T
         print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
-        w_encoder = np.round(autoencoder.layers[1].get_weights()[0], 2).T  # W in Figure 3.
+        w_encoder = np.round(autoencoder.layers[1].get_weights()[0], 2).T
         print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
         print('Decoder weights norm')
         w_decoder = np.round(hdec_weights, 2)  
@@ -201,7 +201,7 @@ def ae_stats(properties):
     if 'ortho' in properties:
         print('Encoder weights dot products')
         w_encoder = autoencoder.layers[0].get_weights()[0]
-        print(np.round(np.dot(w_encoder, w_encoder.T), 2), end="\n\n")
+        print(np.round(np.dot(w_encoder.T, w_encoder), 2), end="\n\n")
         w_encoder = autoencoder.layers[1].get_weights()[0]
         print(np.round(np.dot(w_encoder.T, w_encoder), 2), end="\n\n")
         print('Decoder weights dot product')

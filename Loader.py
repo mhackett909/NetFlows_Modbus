@@ -30,10 +30,10 @@ X_clean = X.loc[clean_indices]
 # In[2]:
 
 # Anomaly generator
-def generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient):
+def generate_mal_subflows(num_mal, pkts_sec, pkt_size_min, pkt_size_max, gradient):
     mal_subflows = []
     for i in range(num_mal):
-        mal_subflows.append(mal_subflow(pkts_sec, pkt_size, gradient))
+        mal_subflows.append(mal_subflow(pkts_sec, pkt_size_min, pkt_size_max, gradient))
     mal_subflows = pd.DataFrame(mal_subflows)
     X_clean['Anomaly'] = 0
     mal_subflows.columns = X_clean.columns
@@ -41,17 +41,18 @@ def generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient):
     data = [X_clean, mal_subflows]
     return pd.concat(data).sample(frac=1)
 
-def mal_subflow(pkts_sec, pkt_size, gradient):
+def mal_subflow(pkts_sec, pkt_size_min, pkt_size_max, gradient):
     mal_features = []
     dur = 5
     num_pkts = pkts_sec * dur
     mal_features.append(pkts_sec)
     # Simple ICMP flood with same size packets (bytes)
+    pkt_size = pkt_size_max
     if gradient:
-        pkt_size = np.random.randint(64, pkt_size)
+        pkt_size = np.random.randint(pkt_size_min, pkt_size_max)
     total_size = pkt_size * num_pkts
     total_size /= 1e3 # KB
-    bits_sec = (total_size * 8)/dur
+    bits_sec = (total_size * 8)/dur # bytes to bits
     mal_features.append(bits_sec)
     mal_features.append(pkt_size) 
     mal_features.append(0) # no standard deviation for uniform sizes
@@ -63,16 +64,22 @@ def mal_subflow(pkts_sec, pkt_size, gradient):
     return pd.Series(mal_features)
 
 # Anomalous Flow Generation
-pkt_size = 500 # Nominal range: 40 - 1389 bytes (65,535 bytes max in IPv4)
-pkts_sec = 20 # Highest in nominal data: 14
-# Generate each flow using different packet size (between 64 and pkt_size)
-# Note: Packet sizes are equal in each subflow, not randomized
-gradient = True
+# Preset for experiments with usignite_features.csv
+pkt_size_min = 64 # Nominal range: 40 - 1389 bytes
+pkt_size_max = 500 # (65,535 bytes max in IPv4)
+
+# Average nominal: 9.19 packets/sec
+pkts_sec = 20 
+
 # Number of malicious subflows to generate
 num_mal = np.ceil(X_clean.shape[0] / 5).astype(int) # 20% of clean subflows
 
-dirty_subflows = generate_mal_subflows(num_mal, pkts_sec, pkt_size, gradient)
+# Gradient generates each flow using packet size between min and max
+# Otherwise all packets are max size
+# Note: Packet sizes are always equal in each synthetic flow
+gradient = True
 
+dirty_subflows = generate_mal_subflows(num_mal, pkts_sec, pkt_size_min, pkt_size_max, gradient)
 X = dirty_subflows[features]
 y = dirty_subflows[target]
 
@@ -189,9 +196,9 @@ def ae_stats(properties):
         print(np.round(odec_weights, 3), end="\n\n")
     if 'norm' in properties:
         print('Encoder weights norm')
-        w_encoder = np.round(autoencoder.layers[0].get_weights()[0], 2).T
+        w_encoder = np.round(autoencoder.layers[0].get_weights()[0], 2).T  # W in Figure 3.
         print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
-        w_encoder = np.round(autoencoder.layers[1].get_weights()[0], 2).T
+        w_encoder = np.round(autoencoder.layers[1].get_weights()[0], 2).T  # W in Figure 3.
         print(np.round(np.sum(w_encoder ** 2, axis = 1),3), end="\n\n")
         print('Decoder weights norm')
         w_decoder = np.round(hdec_weights, 2)  

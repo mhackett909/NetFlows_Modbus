@@ -13,7 +13,7 @@ class Extractor:
                         'Pkt_Size_Min', 'Pkt_Size_Max', 'SYN_Sec', 'TTL_Avg', 'Anomaly']
     def getCSVFiles(self): 
         files = []
-        for file in os.listdir(path):
+        for file in os.listdir(self.path):
             ext = file[-3:]
             if ext == "csv":
                 files.append(file)
@@ -250,7 +250,7 @@ class Extractor:
         self.df_subflows.to_csv(path+file, encoding="utf-8", index=False)
         print(self.df_subflows.info(), end="\n\n")
 
-# USignite PCAP
+# USignite PCAP (CSV file)
 path = '/smallwork/m.hackett_local/data/USignite/csv/' 
 
 method = "interval" #Options: "timeout" or "interval" (default)

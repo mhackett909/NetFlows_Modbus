@@ -1,0 +1,26 @@
+**********FLOWS****************
+#!/bin/bash
+echo Converting pcap...
+tshark -r USignite_IPEM_data.pcapng -E header=y -E separator=, -E quote=d -E occurrence=f -T fields -e frame.time_epoch -e ip.len -e ip.proto -e ip.src -e ip.dst -e ip.ttl -e tcp.srcport -e tcp.dstport -e tcp.flags -e udp.srcport -e udp.dstport > usignite_flows.csv
+
+mkdir -p csv
+
+mv usignite.csv csv
+*******************************
+
+********ARP/MITM***************
+tshark -r USignite_IPEM_data.pcapng -E separator=, -T fields -e arp.opcode -e arp.src.hw_mac -e arp.src.proto_ipv4 -e arp.dst.hw_mac -e arp.dst.proto_ipv4 > arp_file.csv
+*******************************
+
+********REGISTERS**************
+tshark -r USignite_IPEM_data.pcapng -T fields -e modbus.register.uint16 > some_file.csv
+
+tshark -r USignite_IPEM_data.pcapng -E header=y -T fields -e mbtcp.unit_id  > another_file.csv
+*******************************
+
+
+
+
+
+
+

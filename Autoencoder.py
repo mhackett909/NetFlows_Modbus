@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import tensorflow as tf
 import tensorflow_addons as tfa
+import os
 
 # To suppress a warning when saving LeakyReLU
 import absl.logging
@@ -18,13 +19,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix, recall_score, f1_score, precision_score
 from tensorflow.keras.constraints import UnitNorm
 
-
 # In[1]:
 # See Extractor.py
-print("Loading Features...")
+print("Loading Modbus Features...")
 
-path = '/smallwork/m.hackett_local/data/USignite/features/'
-file = 'usignite_features.csv'
+path = 'C:\\Users\\Michael\\Dropbox\\Backup\\Michael\\Shared\\Documents\\VTEC\\US Ignite\\features\\'
+file = 'usignite_flows_features.csv'
 df = pd.read_csv(path+file)
 df.info()
 
@@ -35,15 +35,7 @@ X = df[features]
 y = df[target]
 
 print("Splitting data...")
-# Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.2, shuffle=False, random_state=42)
-
-# Create "clean" set for training (remove anomalous subflows, if any)
-clean_indices_train = y_train[y_train['Anomaly'] == 0].index
-X_train_clean = X_train.loc[clean_indices_train]
-
-clean_indices_test = y_test[y_test['Anomaly'] == 0].index
-X_test_clean = X_test.loc[clean_indices_test]
 
 # In[2]:
 
@@ -78,11 +70,11 @@ hidden_dim = input_dim - 1
 latent_dim = np.ceil(input_dim / 2)
 
 # Options
-model_name = 'autoencoder_model_1.tf'
+model_name = 'autoencoder_model_8_ddos.tf'
 
-act1 = "relu"
-act2 = "linear"
-#act1 = act2 = LeakyReLU()
+#act1 = "relu"
+#act2 = "linear"
+act1 = act2 = LeakyReLU()
 encoder_constraint = decoder_constraint = None
 
 #encoder_constraint = UnitNorm(axis=0)
@@ -124,21 +116,21 @@ autoencoder.compile(metrics=['accuracy'],
                     loss='mean_squared_error',
                     optimizer=opt)
 
-
 # Save checkpoint to upload the best model for testing
-cp = ModelCheckpoint(filepath=model_name,
+model_path = 'models/'
+if not os.path.exists(model_path):
+    os.makedirs(model_path)
+cp = ModelCheckpoint(filepath=model_path+model_name,
                      save_best_only=True,verbose=0)
-
 
 # Parameter helps prevent overfitting
 early_stop = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50)
 
-
-history = autoencoder.fit(X_train_clean, X_train_clean,
+history = autoencoder.fit(X_train, X_train,
                     epochs=nb_epoch,
                     batch_size=batch_size,
                     shuffle=True,
-                    validation_data=(X_test_clean, X_test_clean),
+                    validation_data=(X_test, X_test),
                     callbacks=[cp, early_stop]).history
 
 # In[5]:

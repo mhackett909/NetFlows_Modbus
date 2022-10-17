@@ -70,18 +70,18 @@ hidden_dim = input_dim - 1
 latent_dim = np.ceil(input_dim / 2)
 
 # Options
-model_name = 'autoencoder_model_8_ddos.tf'
+model_name = 'autoencoder_model_16_ddos.tf'
 
 #act1 = "relu"
 #act2 = "linear"
 act1 = act2 = LeakyReLU()
-encoder_constraint = decoder_constraint = None
+#encoder_constraint = decoder_constraint = None
 
-#encoder_constraint = UnitNorm(axis=0)
-#decoder_constraint = UnitNorm(axis=1)
+encoder_constraint = UnitNorm(axis=0)
+decoder_constraint = UnitNorm(axis=1)
 
 opt = tf.keras.optimizers.Adam()
-#opt = tfa.optimizers.Lookahead(opt)
+opt = tfa.optimizers.Lookahead(opt)
 
 # Base Encoder 
 hidden_1 = Dense(hidden_dim, 
@@ -93,12 +93,12 @@ latent = Dense(latent_dim,
                kernel_constraint=encoder_constraint)
 
 # Base Decoder 
-hidden_2 = Dense(hidden_dim, activation=act1, kernel_constraint=decoder_constraint) 
-out = Dense(input_dim, activation=act2, kernel_constraint=decoder_constraint)
+#hidden_2 = Dense(hidden_dim, activation=act1, kernel_constraint=decoder_constraint) 
+#out = Dense(input_dim, activation=act2, kernel_constraint=decoder_constraint)
 
 # Dense Transpose Decoder (Tied Weights)
-#hidden_2 = DenseTranspose(latent, activation=act1)
-#out = DenseTranspose(hidden_1, activation=act2)
+hidden_2 = DenseTranspose(latent, activation=act1)
+out = DenseTranspose(hidden_1, activation=act2)
 
 # Model
 autoencoder = Sequential()
@@ -124,14 +124,14 @@ cp = ModelCheckpoint(filepath=model_path+model_name,
                      save_best_only=True,verbose=0)
 
 # Parameter helps prevent overfitting
-early_stop = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50)
+#early_stop = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=50)
 
 history = autoencoder.fit(X_train, X_train,
                     epochs=nb_epoch,
                     batch_size=batch_size,
                     shuffle=True,
                     validation_data=(X_test, X_test),
-                    callbacks=[cp, early_stop]).history
+                    callbacks=[cp]).history
 
 # In[5]:
 # Plot loss against epochs
